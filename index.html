@@ -17,21 +17,30 @@
             margin: 5px;
             cursor: pointer;
         }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="video-container">
-        <h2>实时预览</h2>
-        <video id="videoElement" autoplay></video>
-        <br>
-        <button id="startButton">开始录制</button>
-        <button id="stopButton" disabled>停止录制</button>
-        <h2>录制的视频</h2>
-        <video id="recordedVideo" controls autoplay></video>
+        <button id="initCameraButton">打开摄像头</button>
+        
+        <div id="recordingControls" class="hidden">
+            <h2>实时预览</h2>
+            <video id="videoElement" autoplay></video>
+            <br>
+            <button id="startButton">开始录制</button>
+            <button id="stopButton" disabled>停止录制</button>
+            <h2>录制的视频</h2>
+            <video id="recordedVideo" controls autoplay></video>
+        </div>
     </div>
 
     <script>
         // 获取所有需要的DOM元素
+        const initCameraButton = document.getElementById('initCameraButton');
+        const recordingControls = document.getElementById('recordingControls');
         const videoElement = document.getElementById('videoElement');
         const recordedVideo = document.getElementById('recordedVideo');
         const startButton = document.getElementById('startButton');
@@ -40,15 +49,21 @@
         // 存储媒体流和录制器
         let mediaRecorder;
         let recordedChunks = [];
+        let stream;
 
-        // 请求访问摄像头
+        // 初始化摄像头
         async function initCamera() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
+                stream = await navigator.mediaDevices.getUserMedia({ 
                     video: true, 
                     audio: true 
                 });
                 videoElement.srcObject = stream;
+                
+                // 显示录制控制界面
+                recordingControls.classList.remove('hidden');
+                // 隐藏初始化按钮
+                initCameraButton.classList.add('hidden');
                 
                 // 创建MediaRecorder实例
                 mediaRecorder = new MediaRecorder(stream);
@@ -75,6 +90,16 @@
             }
         }
 
+        // 停止所有媒体轨道
+        function stopMediaTracks() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        // 初始化摄像头按钮点击事件
+        initCameraButton.onclick = initCamera;
+
         // 开始录制
         startButton.onclick = () => {
             mediaRecorder.start();
@@ -83,7 +108,7 @@
             
             // 5秒后自动停止录制
             setTimeout(() => {
-                if (mediaRecorder.state === 'recording') {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
                     mediaRecorder.stop();
                     startButton.disabled = false;
                     stopButton.disabled = true;
@@ -93,13 +118,17 @@
 
         // 停止录制
         stopButton.onclick = () => {
-            mediaRecorder.stop();
-            startButton.disabled = false;
-            stopButton.disabled = true;
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
         };
 
-        // 页面加载时初始化摄像头
-        window.onload = initCamera;
+        // 页面关闭时清理资源
+        window.onbeforeunload = () => {
+            stopMediaTracks();
+        };
     </script>
 </body>
 </html>
