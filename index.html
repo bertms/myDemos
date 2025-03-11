@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>摄像头录制视频</title>
+    <title>摄像头录制视频1</title>
     <style>
         .video-container {
             margin: 20px;
@@ -24,51 +24,60 @@
 </head>
 <body>
     <div class="video-container">
-        <button id="initCameraButton">打开摄像头</button>
+        <!-- 初始只显示预览按钮 -->
+        <button id="previewButton">打开预览</button>
         
-        <div id="recordingControls" class="hidden">
+        <!-- 预览区域（初始隐藏） -->
+        <div id="previewArea" class="hidden">
             <h2>实时预览</h2>
             <video id="videoElement" autoplay></video>
             <br>
-            <button id="startButton">开始录制</button>
-            <button id="stopButton" disabled>停止录制</button>
+            <button id="startRecord">开始录制</button>
+            <button id="stopRecord" disabled>停止录制</button>
+            <button id="closePreview">关闭预览</button>
+        </div>
+
+        <!-- 录制视频区域（初始隐藏） -->
+        <div id="recordedArea" class="hidden">
             <h2>录制的视频</h2>
             <video id="recordedVideo" controls autoplay></video>
         </div>
     </div>
 
     <script>
-        // 获取所有需要的DOM元素
-        const initCameraButton = document.getElementById('initCameraButton');
-        const recordingControls = document.getElementById('recordingControls');
+        // 获取所有DOM元素
+        const previewButton = document.getElementById('previewButton');
+        const previewArea = document.getElementById('previewArea');
+        const recordedArea = document.getElementById('recordedArea');
         const videoElement = document.getElementById('videoElement');
         const recordedVideo = document.getElementById('recordedVideo');
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
+        const startRecord = document.getElementById('startRecord');
+        const stopRecord = document.getElementById('stopRecord');
+        const closePreview = document.getElementById('closePreview');
 
         // 存储媒体流和录制器
         let mediaRecorder;
         let recordedChunks = [];
         let stream;
 
-        // 初始化摄像头
-        async function initCamera() {
+        // 打开预览
+        async function openPreview() {
             try {
+                // 请求摄像头权限并获取媒体流
                 stream = await navigator.mediaDevices.getUserMedia({ 
                     video: true, 
                     audio: true 
                 });
+                
+                // 设置视频源并显示预览区域
                 videoElement.srcObject = stream;
+                previewArea.classList.remove('hidden');
+                previewButton.classList.add('hidden');
                 
-                // 显示录制控制界面
-                recordingControls.classList.remove('hidden');
-                // 隐藏初始化按钮
-                initCameraButton.classList.add('hidden');
-                
-                // 创建MediaRecorder实例
+                // 初始化录制器
                 mediaRecorder = new MediaRecorder(stream);
 
-                // 处理录制的数据
+                // 处理录制数据
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
                         recordedChunks.push(event.data);
@@ -81,6 +90,7 @@
                         type: 'video/webm'
                     });
                     recordedVideo.src = URL.createObjectURL(blob);
+                    recordedArea.classList.remove('hidden');
                     recordedChunks = [];
                 };
 
@@ -90,45 +100,63 @@
             }
         }
 
-        // 停止所有媒体轨道
-        function stopMediaTracks() {
+        // 关闭预览
+        function closePreviewHandler() {
+            // 停止所有媒体轨道
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
+            
+            // 重置UI
+            previewArea.classList.add('hidden');
+            previewButton.classList.remove('hidden');
+            videoElement.srcObject = null;
+            
+            // 重置录制状态
+            startRecord.disabled = false;
+            stopRecord.disabled = true;
         }
 
-        // 初始化摄像头按钮点击事件
-        initCameraButton.onclick = initCamera;
-
         // 开始录制
-        startButton.onclick = () => {
-            mediaRecorder.start();
-            startButton.disabled = true;
-            stopButton.disabled = false;
-            
-            // 5秒后自动停止录制
-            setTimeout(() => {
-                if (mediaRecorder && mediaRecorder.state === 'recording') {
-                    mediaRecorder.stop();
-                    startButton.disabled = false;
-                    stopButton.disabled = true;
-                }
-            }, 5000);
-        };
+        function startRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                recordedChunks = [];
+                mediaRecorder.start();
+                startRecord.disabled = true;
+                stopRecord.disabled = false;
+                
+                // 5秒后自动停止录制
+                setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                        startRecord.disabled = false;
+                        stopRecord.disabled = true;
+                    }
+                }, 5000);
+            }
+        }
 
         // 停止录制
-        stopButton.onclick = () => {
+        function stopRecording() {
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
-                startButton.disabled = false;
-                stopButton.disabled = true;
+                startRecord.disabled = false;
+                stopRecord.disabled = true;
             }
-        };
+        }
+
+        // 事件监听
+        previewButton.addEventListener('click', openPreview);
+        closePreview.addEventListener('click', closePreviewHandler);
+        startRecord.addEventListener('click', startRecording);
+        stopRecord.addEventListener('click', stopRecording);
 
         // 页面关闭时清理资源
-        window.onbeforeunload = () => {
-            stopMediaTracks();
-        };
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        });
     </script>
 </body>
 </html>
