@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>摄像头录制视频</title>
+    <style>
+        .video-container {
+            margin: 20px;
+        }
+        #videoElement, #recordedVideo {
+            width: 400px;
+            height: 300px;
+            border: 1px solid #ccc;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <h2>实时预览</h2>
+        <video id="videoElement" autoplay></video>
+        <br>
+        <button id="startButton">开始录制</button>
+        <button id="stopButton" disabled>停止录制</button>
+        <h2>录制的视频</h2>
+        <video id="recordedVideo" controls autoplay></video>
+    </div>
+
+    <script>
+        // 获取所有需要的DOM元素
+        const videoElement = document.getElementById('videoElement');
+        const recordedVideo = document.getElementById('recordedVideo');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+
+        // 存储媒体流和录制器
+        let mediaRecorder;
+        let recordedChunks = [];
+
+        // 请求访问摄像头
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: true 
+                });
+                videoElement.srcObject = stream;
+                
+                // 创建MediaRecorder实例
+                mediaRecorder = new MediaRecorder(stream);
+
+                // 处理录制的数据
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                // 录制完成时的处理
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, {
+                        type: 'video/webm'
+                    });
+                    recordedVideo.src = URL.createObjectURL(blob);
+                    recordedChunks = [];
+                };
+
+            } catch (error) {
+                console.error('Error accessing camera:', error);
+                alert('无法访问摄像头：' + error.message);
+            }
+        }
+
+        // 开始录制
+        startButton.onclick = () => {
+            mediaRecorder.start();
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            
+            // 5秒后自动停止录制
+            setTimeout(() => {
+                if (mediaRecorder.state === 'recording') {
+                    mediaRecorder.stop();
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                }
+            }, 5000);
+        };
+
+        // 停止录制
+        stopButton.onclick = () => {
+            mediaRecorder.stop();
+            startButton.disabled = false;
+            stopButton.disabled = true;
+        };
+
+        // 页面加载时初始化摄像头
+        window.onload = initCamera;
+    </script>
+</body>
+</html>
