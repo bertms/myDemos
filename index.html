@@ -87,7 +87,7 @@
                 // 录制完成时的处理
                 mediaRecorder.onstop = () => {
                     const blob = new Blob(recordedChunks, {
-                        type: 'video/webm'
+                        type: 'video/mp4'
                     });
                     recordedVideo.src = URL.createObjectURL(blob);
                     recordedArea.classList.remove('hidden');
